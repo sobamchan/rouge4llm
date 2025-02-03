@@ -1,7 +1,15 @@
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError
+import torch
 
 from tqdm import tqdm
-from transformers import Pipeline, pipeline
+from transformers import (
+    Pipeline,
+    pipeline,
+    BitsAndBytesConfig,
+    AutoModelForCausalLM,
+    AutoTokenizer,
+)
 
 
 @dataclass(frozen=True)
@@ -17,7 +25,29 @@ class LLaMASummarizer:
 
     @classmethod
     def load(cls, model_name: str, system_instruction: str) -> "LLaMASummarizer":
-        pipe = pipeline("text-generation", model=model_name)
+        try:
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+            )
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                device_map="auto",
+                quantization_config=bnb_config,
+            )
+        except PackageNotFoundError:
+            model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                device_map="auto",
+            )
+
+        pipe = pipeline(
+            "text-generation",
+            model=model,
+            tokenizer=AutoTokenizer.from_pretrained(model_name),
+        )
         return cls(pipe=pipe, system_instruction=system_instruction)
 
     def summarize(self, docs: list[str]) -> list[str]:
