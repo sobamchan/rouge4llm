@@ -6,6 +6,11 @@
 uv add rouge4llm
 ```
 
+Install [bitsandbytes](https://github.com/bitsandbytes-foundation/bitsandbytes) if you want to quantize the model by running the following command.
+
+```sh
+uv add bitsandbytes
+```
 
 # Example
 
